@@ -19,6 +19,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.6.0",
     "mongoose": "^9.10.2",
+    "resend": "^6.30.0",
     "stripe": "^22.6.2"
   },
   "devDependencies": {

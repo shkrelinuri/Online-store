@@ -43,6 +43,9 @@ function App() {
   const [authLoading, setAuthLoading] = useState(false)
   const [checkoutError, setCheckoutError] = useState('')
   const [checkoutLoading, setCheckoutLoading] = useState(false)
+  const [contactOpen, setContactOpen] = useState(false)
+  const [contactSent, setContactSent] = useState(false)
+  const [contactForm, setContactForm] = useState({ name: '', email: '', subject: '', message: '' })
 
   useEffect(() => {
     axios.get('/api/health').then(({ data }) => setApiStatus(data.status)).catch(() => setApiStatus('offline'))
@@ -109,6 +112,16 @@ function App() {
       setCheckoutLoading(false)
     }
   }
+  async function submitContact(event) {
+    event.preventDefault()
+    try {
+      await axios.post('/api/contact', contactForm)
+      setContactSent(true)
+      setContactForm({ name: '', email: '', subject: '', message: '' })
+    } catch (error) {
+      window.alert(error.response?.data?.message || 'Unable to send your message right now.')
+    }
+  }
 
   return (
     <div className="storefront">
@@ -116,12 +129,13 @@ function App() {
       <header className="site-header">
         <button className="menu-toggle" aria-label="Open menu" onClick={() => setMenuOpen(!menuOpen)}><span /> <span /></button>
         <a className="wordmark" href="#top">NORTH / FORM</a>
-        <nav className={`main-nav ${menuOpen ? 'is-open' : ''}`}><button onClick={() => chooseCategory('New arrivals')}>New in</button><button onClick={() => chooseCategory('Clothing')}>Shop</button><a href="#journal" onClick={() => setMenuOpen(false)}>Journal</a><a href="#about" onClick={() => setMenuOpen(false)}>About</a></nav>
+        <nav className={`main-nav ${menuOpen ? 'is-open' : ''}`}><button onClick={() => chooseCategory('New arrivals')}>New in</button><button onClick={() => chooseCategory('Clothing')}>Shop</button><a href="#journal" onClick={() => setMenuOpen(false)}>Journal</a><a href="#about" onClick={() => setMenuOpen(false)}>About</a><button onClick={() => { setContactOpen(true); setMenuOpen(false) }}>Contact</button></nav>
         <div className="header-actions"><button className="icon-button search-button" aria-label="Search" onClick={() => setSearchOpen(!searchOpen)}>⌕</button>{currentUser ? <button className="account-button" onClick={() => openProfile('overview')}>Hi, {currentUser.name}</button> : <button className="account-button" onClick={() => openAccount('login')}>Log in <span>/</span> Sign up</button>}<button className="bag-button" aria-label="Open shopping bag" onClick={() => setCartOpen(true)}>Bag <b>{cartCount}</b></button></div>
       </header>
       {searchOpen && <div className="search-bar"><input autoFocus placeholder="Search clothing, accessories..." value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} /><button onClick={() => { setSearchOpen(false); document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' }) }}>Search ↗</button></div>}
 
       <main id="top">
+        {contactOpen && <section className="contact-page" aria-labelledby="contact-title"><div className="contact-page-header"><button className="account-back" onClick={() => setContactOpen(false)}>← Back to shop</button><button className="modal-close" aria-label="Close contact page" onClick={() => setContactOpen(false)}>×</button></div><div className="contact-layout"><div className="contact-intro"><p className="kicker">We would love to hear from you</p><h1 id="contact-title">Let’s talk<br /><em>good things.</em></h1><p>Questions about a piece, an order, or the world behind North / Form? Send us a note and our small team will get back to you within two business days.</p><div className="contact-details"><div><span>Email</span><a href="mailto:hello@northandform.com">hello@northandform.com</a></div><div><span>Hours</span><p>Monday - Friday<br />09:00 - 17:00 CET</p></div><div><span>Studio</span><p>Vesterbro, Copenhagen<br />Visits by appointment</p></div></div></div><div className="contact-form-wrap">{contactSent ? <div className="contact-success"><p className="kicker">Message received</p><h2>Thank you.</h2><p>We have your note and will be in touch soon.</p><button className="text-link" onClick={() => setContactSent(false)}>Send another message <span>↗</span></button></div> : <form className="contact-form" onSubmit={submitContact}><label>Name<input name="name" value={contactForm.name} onChange={(event) => setContactForm({ ...contactForm, name: event.target.value })} autoComplete="name" required /></label><label>Email<input name="email" type="email" value={contactForm.email} onChange={(event) => setContactForm({ ...contactForm, email: event.target.value })} autoComplete="email" required /></label><label>Subject<input name="subject" value={contactForm.subject} onChange={(event) => setContactForm({ ...contactForm, subject: event.target.value })} required /></label><label>Message<textarea name="message" rows="6" value={contactForm.message} onChange={(event) => setContactForm({ ...contactForm, message: event.target.value })} required /></label><button className="modal-action" type="submit">Send message ↗</button></form>}</div></div></section>}
         <section className="hero" id="new"><div className="hero-copy"><p className="kicker">Spring / Summer 2025</p><h1>Things to<br /><em>live in.</em></h1><p className="hero-text">Thoughtful clothes for your everyday. Made with good materials, considered details, and a little room to breathe.</p><button className="text-link" onClick={() => chooseCategory('New arrivals')}>Explore the collection <span>↗</span></button></div><div className="hero-image"><img src="https://images.unsplash.com/photo-1485968579580-b6d095142e6e?auto=format&fit=crop&w=1400&q=85" alt="Woman in a relaxed neutral outfit" /><span className="image-caption">01 / 04 &nbsp; Quiet confidence</span></div></section>
         <section className="category-strip"><button onClick={() => chooseCategory('New arrivals')}>New arrivals <span>↗</span></button><button onClick={() => chooseCategory('Clothing')}>Clothing <span>↗</span></button><button onClick={() => chooseCategory('Accessories')}>Accessories <span>↗</span></button><button onClick={() => chooseCategory('All pieces')}>The edit <span>↗</span></button></section>
         <section className="product-section" id="products"><div className="section-top"><div><p className="kicker">The latest / {visibleProducts.length} pieces</p><h2>Just in</h2></div><button className="text-link" onClick={() => setActiveCategory('All pieces')}>View all <span>↗</span></button></div><div className="catalog-tools"><div className="category-tabs">{categories.map((category) => <button className={activeCategory === category ? 'active' : ''} key={category} onClick={() => setActiveCategory(category)}>{category}</button>)}</div><button className="favourites-link" onClick={() => setActiveCategory('Favourites')}>♡ {favourites.length} saved</button></div><div className="product-grid">{visibleProducts.map((product) => { const stock = inventory[product.name]?.stock ?? 10; return <article className="product-card" key={product.id}><div className={`product-image ${stock === 0 ? 'sold-out' : ''}`} onClick={() => openProduct(product)}><img src={product.image} alt={product.name} /><span className="product-label">{stock === 0 ? 'Sold out' : product.label}</span><button className={favourites.includes(product.id) ? 'saved' : ''} aria-label={`Save ${product.name}`} onClick={(event) => { event.stopPropagation(); toggleFavourite(product.id) }}>♡</button></div><button className="product-info" onClick={() => openProduct(product)}><div><h3>{product.name}</h3><p>{stock === 0 ? 'Currently unavailable' : `${stock} available`}</p></div><strong>${product.price}</strong></button></article> })}</div>{visibleProducts.length === 0 && <div className="empty-state"><h3>No pieces found.</h3><p>Try another search or browse the full collection.</p><button className="text-link" onClick={() => { setActiveCategory('All pieces'); setSearchTerm('') }}>Reset filters <span>↗</span></button></div>}</section>

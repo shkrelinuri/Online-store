@@ -5,6 +5,7 @@ const dotenv = require('dotenv')
 const express = require('express')
 const jwt = require('jsonwebtoken')
 const mongoose = require('mongoose')
+const { Resend } = require('resend')
 const Stripe = require('stripe')
 const Product = require('./models/Product')
 const User = require('./models/User')
@@ -16,6 +17,7 @@ const port = process.env.PORT || 5000
 const jwtSecret = process.env.JWT_SECRET
 const stripeKey = process.env.STRIPE_SECRET_KEY
 const stripe = stripeKey && /^(sk_test_|sk_live_)/.test(stripeKey) ? new Stripe(stripeKey) : null
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 const shippingCountries = [
   'CA', 'MX', 'US', 'AG', 'AI', 'AW', 'BB', 'BL', 'BM', 'BQ', 'BS', 'BZ', 'CR', 'CW', 'DM', 'DO', 'GD', 'GL', 'GP', 'GT', 'HN', 'HT', 'JM', 'KN', 'KY', 'LC', 'MF', 'MQ', 'MS', 'NI', 'PA', 'PM', 'PR', 'SV', 'SX', 'TC', 'TT', 'VC', 'VG',
   'AR', 'BO', 'BR', 'BV', 'CL', 'CO', 'EC', 'FK', 'GF', 'GS', 'GY', 'PE', 'PY', 'SR', 'UY', 'VE',
@@ -42,6 +44,27 @@ app.use(express.json())
 
 app.get('/api/health', (request, response) => {
   response.json({ status: 'ok', service: 'online-store-api' })
+})
+
+app.post('/api/contact', async (request, response) => {
+  const { name, email, subject, message } = request.body
+  if (!name?.trim() || !email?.trim() || !subject?.trim() || !message?.trim()) return response.status(400).json({ message: 'Name, email, subject, and message are required.' })
+  if (!resend) return response.status(503).json({ message: 'Contact email is not configured. Add RESEND_API_KEY to server/.env.' })
+
+  try {
+    const { error } = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL || 'North / Form <onboarding@resend.dev>',
+      to: ['nurishkreli5@gmail.com'],
+      replyTo: email.trim(),
+      subject: `[North / Form] ${subject.trim()}`,
+      text: `Name: ${name.trim()}\nEmail: ${email.trim()}\n\n${message.trim()}`,
+    })
+    if (error) return response.status(502).json({ message: 'Unable to deliver your message right now.' })
+    response.json({ message: 'Your message has been sent.' })
+  } catch (error) {
+    console.error('Contact email failed:', error.message)
+    response.status(500).json({ message: 'Unable to deliver your message right now.' })
+  }
 })
 
 app.get('/api/products', async (request, response) => {
